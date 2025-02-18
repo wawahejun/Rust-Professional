@@ -7,29 +7,39 @@
 use std::collections::HashSet;
 
 struct Graph {
-    adj: Vec<Vec<usize>>, 
+    adj: Vec<Vec<usize>>, // 邻接表
 }
 
 impl Graph {
+    // 创建一个包含 n 个顶点的新图
     fn new(n: usize) -> Self {
         Graph {
             adj: vec![vec![]; n],
         }
     }
 
+    // 向图中添加一条边
     fn add_edge(&mut self, src: usize, dest: usize) {
         self.adj[src].push(dest);
-        self.adj[dest].push(src); 
+        self.adj[dest].push(src); // 如果是有向图，删除这一行
     }
 
+    // 辅助函数：执行深度优先搜索
     fn dfs_util(&self, v: usize, visited: &mut HashSet<usize>, visit_order: &mut Vec<usize>) {
-        //TODO
+        visited.insert(v);
+        visit_order.push(v);
+
+        for &neighbor in &self.adj[v] {
+            if !visited.contains(&neighbor) {
+                self.dfs_util(neighbor, visited, visit_order);
+            }
+        }
     }
 
-    // Perform a depth-first search on the graph, return the order of visited nodes
+    // 执行深度优先搜索，返回访问节点的顺序
     fn dfs(&self, start: usize) -> Vec<usize> {
         let mut visited = HashSet::new();
-        let mut visit_order = Vec::new(); 
+        let mut visit_order = Vec::new();
         self.dfs_util(start, &mut visited, &mut visit_order);
         visit_order
     }

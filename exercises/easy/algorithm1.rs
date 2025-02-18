@@ -1,9 +1,3 @@
-/*
-	single linked list merge
-	This problem requires you to merge two ordered singly linked lists into one ordered singly linked list
-*/
-
-
 use std::fmt::{self, Display, Formatter};
 use std::ptr::NonNull;
 use std::vec::*;
@@ -22,6 +16,7 @@ impl<T> Node<T> {
         }
     }
 }
+
 #[derive(Debug)]
 struct LinkedList<T> {
     length: u32,
@@ -47,37 +42,67 @@ impl<T> LinkedList<T> {
     pub fn add(&mut self, obj: T) {
         let mut node = Box::new(Node::new(obj));
         node.next = None;
-        let node_ptr = Some(unsafe { NonNull::new_unchecked(Box::into_raw(node)) });
+        let node_ptr = unsafe { NonNull::new_unchecked(Box::into_raw(node)) };
         match self.end {
-            None => self.start = node_ptr,
-            Some(end_ptr) => unsafe { (*end_ptr.as_ptr()).next = node_ptr },
+            None => {
+                self.start = Some(node_ptr);
+                self.end = Some(node_ptr);
+            }
+            Some(end) => unsafe {
+                (*end.as_ptr()).next = Some(node_ptr);
+                self.end = Some(node_ptr);
+            },
         }
-        self.end = node_ptr;
         self.length += 1;
     }
 
-    pub fn get(&mut self, index: i32) -> Option<&T> {
+    pub fn get(&self, index: i32) -> Option<&T> {
         self.get_ith_node(self.start, index)
     }
 
-    fn get_ith_node(&mut self, node: Option<NonNull<Node<T>>>, index: i32) -> Option<&T> {
+    fn get_ith_node(&self, node: Option<NonNull<Node<T>>>, index: i32) -> Option<&T> {
         match node {
             None => None,
-            Some(next_ptr) => match index {
-                0 => Some(unsafe { &(*next_ptr.as_ptr()).val }),
-                _ => self.get_ith_node(unsafe { (*next_ptr.as_ptr()).next }, index - 1),
+            Some(ptr) => match index {
+                0 => Some(unsafe { &(*ptr.as_ptr()).val }),
+                _ => self.get_ith_node(unsafe { (*ptr.as_ptr()).next }, index - 1),
             },
         }
     }
-	pub fn merge(list_a:LinkedList<T>,list_b:LinkedList<T>) -> Self
-	{
-		//TODO
-		Self {
-            length: 0,
-            start: None,
-            end: None,
+
+    pub fn merge(list_a: LinkedList<T>, list_b: LinkedList<T>) -> Self
+    where
+        T: PartialOrd + Copy,
+    {
+        let mut merged = LinkedList::new();
+        let mut node_a = list_a.start;
+        let mut node_b = list_b.start;
+
+        while let (Some(a_ptr), Some(b_ptr)) = (node_a, node_b) {
+            let a_val = unsafe { (*a_ptr.as_ptr()).val };
+            let b_val = unsafe { (*b_ptr.as_ptr()).val };
+
+            if a_val <= b_val {
+                merged.add(a_val);
+                node_a = unsafe { (*a_ptr.as_ptr()).next };
+            } else {
+                merged.add(b_val);
+                node_b = unsafe { (*b_ptr.as_ptr()).next };
+            }
         }
-	}
+
+        while let Some(a_ptr) = node_a {
+            merged.add(unsafe { (*a_ptr.as_ptr()).val });
+            node_a = unsafe { (*a_ptr.as_ptr()).next };
+        }
+
+        while let Some(b_ptr) = node_b {
+            merged.add(unsafe { (*b_ptr.as_ptr()).val });
+            node_b = unsafe { (*b_ptr.as_ptr()).next };
+        }
+
+        merged
+    }
 }
 
 impl<T> Display for LinkedList<T>
