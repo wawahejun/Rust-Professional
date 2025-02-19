@@ -10,8 +10,16 @@
 use std::fmt::{self, Display, Formatter};
 
 pub fn get_sum(a: i32, b: i32) -> i32 {
-    // TODO: Implement the logic to calculate the sum of two integers without using `+`
-    0 // Placeholder return value
+    let mut a = a;
+    let mut b = b;
+
+    while b != 0 {
+        let carry = a & b;  // Calculate the carry using bitwise AND
+        a = a ^ b;         // Calculate the sum without carry using bitwise XOR
+        b = carry << 1;    // Shift the carry to the left by one position
+    }
+
+    a
 }
 
 #[cfg(test)]

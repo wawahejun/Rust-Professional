@@ -10,7 +10,6 @@ pub struct Heap<T>
 where
     T: Default,
 {
-    count: usize,
     items: Vec<T>,
     comparator: fn(&T, &T) -> bool,
 }
@@ -21,14 +20,13 @@ where
 {
     pub fn new(comparator: fn(&T, &T) -> bool) -> Self {
         Self {
-            count: 0,
-            items: vec![T::default()],
+            items: vec![T::default()], // Reserve index 0 as a placeholder
             comparator,
         }
     }
 
     pub fn len(&self) -> usize {
-        self.count
+        self.items.len() - 1 // Subtract placeholder
     }
 
     pub fn is_empty(&self) -> bool {
@@ -36,28 +34,12 @@ where
     }
 
     pub fn add(&mut self, value: T) {
-        // 将新元素添加到堆的末尾
-        self.count += 1;
-        if self.count == self.items.len() {
-            self.items.push(value);
-        } else {
-            self.items[self.count] = value;
-        }
-
-        // 上浮新元素以维护堆的性质
-        let mut idx = self.count;
-        while idx > 1 && (self.comparator)(&self.items[idx], &self.items[self.parent_idx(idx)]) {
-            self.items.swap(idx, self.parent_idx(idx));
-            idx = self.parent_idx(idx);
-        }
+        self.items.push(value);
+        self.heapify_up(self.items.len() - 1);
     }
 
     fn parent_idx(&self, idx: usize) -> usize {
         idx / 2
-    }
-
-    fn children_present(&self, idx: usize) -> bool {
-        self.left_child_idx(idx) <= self.count
     }
 
     fn left_child_idx(&self, idx: usize) -> usize {
@@ -68,14 +50,42 @@ where
         self.left_child_idx(idx) + 1
     }
 
-    fn smallest_child_idx(&self, idx: usize) -> usize {
-        let left = self.left_child_idx(idx);
-        let right = self.right_child_idx(idx);
-
-        if right <= self.count && (self.comparator)(&self.items[right], &self.items[left]) {
-            right
+    fn smallest_child_idx(&self, idx: usize) -> Option<usize> {
+        let left_idx = self.left_child_idx(idx);
+        if left_idx >= self.items.len() {
+            None
+        } else if left_idx + 1 >= self.items.len() {
+            Some(left_idx)
         } else {
-            left
+            let right_idx = left_idx + 1;
+            if (self.comparator)(&self.items[left_idx], &self.items[right_idx]) {
+                Some(left_idx)
+            } else {
+                Some(right_idx)
+            }
+        }
+    }
+
+    fn heapify_up(&mut self, mut idx: usize) {
+        while idx > 1 {
+            let parent_idx = self.parent_idx(idx);
+            if (self.comparator)(&self.items[idx], &self.items[parent_idx]) {
+                self.items.swap(idx, parent_idx);
+                idx = parent_idx;
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn heapify_down(&mut self, mut idx: usize) {
+        while let Some(child_idx) = self.smallest_child_idx(idx) {
+            if (self.comparator)(&self.items[child_idx], &self.items[idx]) {
+                self.items.swap(child_idx, idx);
+                idx = child_idx;
+            } else {
+                break;
+            }
         }
     }
 }
@@ -84,12 +94,10 @@ impl<T> Heap<T>
 where
     T: Default + Ord,
 {
-    /// 创建一个最小堆
     pub fn new_min() -> Self {
         Self::new(|a, b| a < b)
     }
 
-    /// 创建一个最大堆
     pub fn new_max() -> Self {
         Self::new(|a, b| a > b)
     }
@@ -102,27 +110,14 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        if self.is_empty() {
+        if self.items.len() <= 1 {
             return None;
         }
 
-        // 移除堆顶元素
-        let result = self.items.swap_remove(0);
-        self.count -= 1;
+        let root = self.items.swap_remove(1);
+        self.heapify_down(1);
 
-        // 下沉新的堆顶元素以维护堆的性质
-        let mut idx = 0;
-        while self.children_present(idx) {
-            let smallest_child = self.smallest_child_idx(idx);
-            if (self.comparator)(&self.items[smallest_child], &self.items[idx]) {
-                self.items.swap(idx, smallest_child);
-                idx = smallest_child;
-            } else {
-                break;
-            }
-        }
-
-        Some(result)
+        Some(root)
     }
 }
 
@@ -153,6 +148,7 @@ impl MaxHeap {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_empty_heap() {
         let mut heap = MaxHeap::new::<i32>();

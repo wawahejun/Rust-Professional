@@ -11,9 +11,41 @@
 
 use std::fmt::{self, Display, Formatter};
 
+// Function to multiply two 2x2 matrices
+fn matrix_multiply(a: [[i32; 2]; 2], b: [[i32; 2]; 2]) -> [[i32; 2]; 2] {
+    let mut result = [[0; 2]; 2];
+    for i in 0..2 {
+        for j in 0..2 {
+            for k in 0..2 {
+                result[i][j] = (result[i][j] + a[i][k] * b[k][j]) ; //% 1_000_000_007; //Taking mod is optional
+            }
+        }
+    }
+    result
+}
+
+// Function to calculate the power of a 2x2 matrix
+fn matrix_power(mut base: [[i32; 2]; 2], mut exp: i32) -> [[i32; 2]; 2] {
+    let mut result = [[1, 0], [0, 1]]; // Identity matrix
+    while exp > 0 {
+        if exp % 2 == 1 {
+            result = matrix_multiply(result, base);
+        }
+        base = matrix_multiply(base, base);
+        exp /= 2;
+    }
+    result
+}
+
 pub fn fib(n: i32) -> i32 {
-    // TODO: Implement the logic to calculate the nth Fibonacci number using matrix exponentiation
-    0 // Placeholder return value
+    if n <= 1 {
+        return n;
+    }
+
+    let base_matrix = [[1, 1], [1, 0]];
+    let result_matrix = matrix_power(base_matrix, n - 1);
+
+    result_matrix[0][0]
 }
 
 #[cfg(test)]

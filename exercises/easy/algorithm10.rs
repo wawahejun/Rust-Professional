@@ -6,49 +6,82 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+
 #[derive(Debug, Clone)]
 pub struct NodeNotInGraph;
+
 impl fmt::Display for NodeNotInGraph {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "accessing a node that is not in the graph")
     }
 }
+
 pub struct UndirectedGraph {
     adjacency_table: HashMap<String, Vec<(String, i32)>>,
 }
+
 impl Graph for UndirectedGraph {
     fn new() -> UndirectedGraph {
         UndirectedGraph {
             adjacency_table: HashMap::new(),
         }
     }
+
     fn adjacency_table_mutable(&mut self) -> &mut HashMap<String, Vec<(String, i32)>> {
         &mut self.adjacency_table
     }
+
     fn adjacency_table(&self) -> &HashMap<String, Vec<(String, i32)>> {
         &self.adjacency_table
     }
+
     fn add_edge(&mut self, edge: (&str, &str, i32)) {
-        //TODO
+        let (from, to, weight) = edge;
+        self.add_node(from);
+        self.add_node(to);
+
+        let from_str = String::from(from);
+        let to_str = String::from(to);
+
+        // Add edge to both nodes' adjacency lists
+        let from_entry = self.adjacency_table_mutable().entry(from_str.clone()).or_default();
+        from_entry.push((to_str.clone(), weight));
+
+        let to_entry = self.adjacency_table_mutable().entry(to_str).or_default();
+        to_entry.push((from_str, weight));
     }
 }
+
 pub trait Graph {
     fn new() -> Self;
+
     fn adjacency_table_mutable(&mut self) -> &mut HashMap<String, Vec<(String, i32)>>;
+
     fn adjacency_table(&self) -> &HashMap<String, Vec<(String, i32)>>;
+
     fn add_node(&mut self, node: &str) -> bool {
-        //TODO
-		true
+        let node_str = String::from(node);
+        match self.adjacency_table_mutable().entry(node_str.clone()) {
+            std::collections::hash_map::Entry::Occupied(_) => false,
+            std::collections::hash_map::Entry::Vacant(v) => {
+                v.insert(Vec::new());
+                true
+            }
+        }
     }
+
     fn add_edge(&mut self, edge: (&str, &str, i32)) {
         //TODO
     }
+
     fn contains(&self, node: &str) -> bool {
         self.adjacency_table().get(node).is_some()
     }
+
     fn nodes(&self) -> HashSet<&String> {
         self.adjacency_table().keys().collect()
     }
+
     fn edges(&self) -> Vec<(&String, &String, i32)> {
         let mut edges = Vec::new();
         for (from_node, from_node_neighbours) in self.adjacency_table() {
@@ -59,10 +92,12 @@ pub trait Graph {
         edges
     }
 }
+
 #[cfg(test)]
 mod test_undirected_graph {
     use super::Graph;
     use super::UndirectedGraph;
+
     #[test]
     fn test_add_edge() {
         let mut graph = UndirectedGraph::new();
