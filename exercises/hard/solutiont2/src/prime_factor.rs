@@ -1,39 +1,26 @@
 use std::cmp::max;
-use num_traits::{Gcd, Pow};
 
 type Number = u128;
 
-struct PrimeConsts {
-    bases: [Number; 7],        // Miller-Rabin测试的基数
-    pollard_threshold: Number, // Pollard-Rho 阈值
-}
-
-impl PrimeConsts {
-    const fn new() -> Self {
-        Self {
-            bases: [2, 3, 5, 7, 11, 13, 17],
-            pollard_threshold: 1_000_000,
-        }
-    }
-}
-
-/// 质因数分解
 struct PrimeFactor {
-    consts: PrimeConsts,
+    bases: [Number; 7],        // Miller-Rabin test bases
+    pollard_threshold: Number, // Threshold for switching to Pollard's Rho
 }
 
 impl PrimeFactor {
     fn new() -> Self {
         Self {
-            consts: PrimeConsts::new(),
+            bases: [2, 3, 5, 7, 11, 13, 17],
+            pollard_threshold: 1_000_000,
         }
     }
 
-    /// 大数相乘取模，避免溢出
+    /// Modular multiplication to avoid overflow
     #[inline]
-    fn mul_mod(&self, mut a: Number, b: Number, m: Number) -> Number {
+    fn mul_mod(&self, a: Number, b: Number, m: Number) -> Number {
         let mut res = 0;
         let mut base = b % m;
+        let mut a = a;
         while a > 0 {
             if a & 1 == 1 {
                 res = (res + base) % m;
@@ -44,14 +31,15 @@ impl PrimeFactor {
         res
     }
 
-    /// 快速幂取模
-    fn mod_pow(&self, mut base: Number, mut exp: Number, modulus: Number) -> Number {
+    /// Modular exponentiation
+    fn mod_pow(&self, base: Number, exp: Number, modulus: Number) -> Number {
         if modulus == 1 {
             return 0;
         }
 
         let mut result = 1;
-        base %= modulus;
+        let mut base = base % modulus;
+        let mut exp = exp;
         while exp > 0 {
             if exp & 1 == 1 {
                 result = self.mul_mod(result, base, modulus);
@@ -62,7 +50,7 @@ impl PrimeFactor {
         result
     }
 
-    /// Miller-Rabin 素性测试
+    /// Miller-Rabin primality test
     fn is_prime(&self, n: Number) -> bool {
         if n <= 1 || n == 4 {
             return false;
@@ -81,7 +69,7 @@ impl PrimeFactor {
             r += 1;
         }
 
-        for &a in self.consts.bases.iter() {
+        for &a in self.bases.iter() {
             if a >= n {
                 break;
             }
@@ -104,7 +92,7 @@ impl PrimeFactor {
         true
     }
 
-    /// Pollard-Rho 质因数分解
+    /// Pollard's Rho algorithm
     fn pollard_rho(&self, n: Number) -> Option<Number> {
         if n % 2 == 0 {
             return Some(2);
@@ -113,15 +101,17 @@ impl PrimeFactor {
             return Some(n);
         }
 
-        let f = |x: Number, c: Number, n: Number| -> Number { (self.mul_mod(x, x, n) + c) % n };
+        let f = |x: Number, c: Number, n: Number| -> Number {
+            (self.mul_mod(x, x, n) + c) % n
+        };
 
         for c in 1..=10 {
             let (mut x, mut y, mut d) = (2, 2, 1);
             while d == 1 {
                 x = f(x, c, n);
                 let t = f(y, c, n);
-                y = (self.mul_mod(t, t, n) + c) % n;
-                d = x.abs_diff(y).gcd(n);
+                y = f(t, c, n);
+                d = gcd(x.abs_diff(y), n);
             }
             if d != 1 && d != n {
                 return Some(d);
@@ -130,7 +120,7 @@ impl PrimeFactor {
         None
     }
 
-    /// 试除法找因子
+    /// Trial division
     fn trial_division(&self, n: Number) -> Option<Number> {
         let sqrt = (n as f64).sqrt() as Number;
         let mut i = 5;
@@ -148,20 +138,22 @@ impl PrimeFactor {
     }
 }
 
-/// 计算最大公因数
+/// Greatest Common Divisor (GCD)
 fn gcd(a: Number, b: Number) -> Number {
-    a.gcd(b)
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
+    }
 }
 
-/// 找到最大素因子
-pub fn find_max_prime_factor(mut n: Number) -> Number {
+/// Find the maximum prime factor
+pub fn find_max_prime_factor(number: Number) -> Number {
     let prime = PrimeFactor::new();
-    if n <= 1 || prime.is_prime(n) {
-        return n;
-    }
-
+    let mut n = number;
     let mut max_factor = 1;
 
+    // Handle small prime factors
     for &small_prime in &[2, 3] {
         while n % small_prime == 0 {
             max_factor = max(max_factor, small_prime);
@@ -170,7 +162,7 @@ pub fn find_max_prime_factor(mut n: Number) -> Number {
     }
 
     while n > 1 {
-        let factor = if n < prime.consts.pollard_threshold {
+        let factor = if n < prime.pollard_threshold {
             prime.trial_division(n)
         } else {
             prime.pollard_rho(n).or_else(|| prime.trial_division(n))
@@ -191,5 +183,6 @@ pub fn find_max_prime_factor(mut n: Number) -> Number {
             }
         }
     }
+
     max_factor
 }
